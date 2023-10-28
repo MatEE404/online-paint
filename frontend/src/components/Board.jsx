@@ -215,8 +215,9 @@ const BoardComponent = () => {
       setStartPositionMouse({ x: 0, y: 0 })
     } else {
       socket.emit("update", changes)
-      setPaintingID(null)
       ctx.beginPath()
+      setChanges([])
+      setPaintingID(null)
     }
   }
 
