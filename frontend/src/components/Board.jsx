@@ -121,6 +121,7 @@ const Players = styled.div`
   justify-content: center;
   align-items: center;
   gap: 0.6rem;
+  z-index: 9999;
 
   span {
     display: block;
