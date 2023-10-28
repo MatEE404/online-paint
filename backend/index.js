@@ -26,7 +26,7 @@ io.on("connection", (client) => {
 
   client.on("update", (newChanges) => {
     changes = [...changes, ...newChanges]
-    client.broadcast.emit("chnages", changes)
+    client.broadcast.emit("chnages", newChanges)
   })
 
   client.on("disconnect", () => {
