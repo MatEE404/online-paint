@@ -24,8 +24,8 @@ io.on("connection", (client) => {
 
   console.log(`Client joined server: ${client.id}`)
 
-  client.on("update", (change) => {
-    changes.push(change)
+  client.on("update", (newChanges) => {
+    changes = [...changes, ...newChanges]
     client.broadcast.emit("chnages", changes)
   })
 

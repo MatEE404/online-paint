@@ -173,6 +173,7 @@ const BoardComponent = () => {
   const [isMoving, setIsMoving] = useState(false)
   const [lineSize, setLineSize] = useState(8)
   const [players, setPlayers] = useState(1)
+  const [changes, setChanges] = useState([])
   const [socket, setSocket] = useState()
   const [ctx, setCtx] = useState()
   const pointerRef = useRef()
@@ -213,6 +214,7 @@ const BoardComponent = () => {
       setIsMoving(false)
       setStartPositionMouse({ x: 0, y: 0 })
     } else {
+      socket.emit("update", changes)
       setPaintingID(null)
       ctx.beginPath()
     }
@@ -248,19 +250,7 @@ const BoardComponent = () => {
       }
 
       handleUpdate(ctx, change)
-      socket.emit("update", change)
-
-      // ctx.lineCap = "round"
-      // ctx.lineWidth = lineSize
-      // ctx.fillStyle = selectedTool === "RUBBER" ? "#fff" : selectedColor
-      // ctx.strokeStyle = selectedTool === "RUBBER" ? "#fff" : selectedColor
-
-      // socket.emit("update", canvasRef.current.toDataURL("image/png"))
-
-      // ctx.lineTo(x, y)
-      // ctx.stroke()
-      // ctx.beginPath()
-      // ctx.moveTo(x, y)
+      setChanges([...changes, change])
     } else if (isMoving) {
       let deltaX = startPositionMouse.x - clientX
       let deltaY = startPositionMouse.y - clientY
@@ -281,6 +271,7 @@ const BoardComponent = () => {
   }
 
   const handleUpdate = (ctx, { x, y, color, size }) => {
+    console.log({ x, y, color, size })
     ctx.lineCap = "round"
     ctx.lineWidth = size
     ctx.fillStyle = color
