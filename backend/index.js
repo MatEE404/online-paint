@@ -20,6 +20,8 @@ io.on("connection", (client) => {
 
   if (canvas) client.emit("canvas", canvas)
 
+  io.emit("players", clients.length)
+
   console.log(`Client joined server: ${client.id}`)
 
   client.on("update", (newCanvas) => {
@@ -29,6 +31,8 @@ io.on("connection", (client) => {
 
   client.on("disconnect", () => {
     clients.splice(clients.indexOf(client), 1)
+
+    io.emit("players", clients.length)
 
     console.log(`Client left server: ${client.id}`)
   })

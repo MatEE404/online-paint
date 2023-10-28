@@ -29,6 +29,7 @@ const Panel = styled.section`
   border-right: 1px solid #ddd;
   box-shadow: 0px 0px 24px 0px rgba(0, 0, 0, 0.1);
   gap: 1rem;
+  z-index: 11;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -62,7 +63,7 @@ const Button = styled.button`
   justify-content: center;
   cursor: pointer;
   transition: all 0.25s ease-in-out;
-  transform: scale(${({ isActive }) => (isActive ? 0.85 : 1)});
+  transform: scale(${({ isActive }) => (isActive ? 0.6 : 1)});
 
   svg {
     transition: all 0.25s ease-in-out;
@@ -102,7 +103,7 @@ const Canvas = styled.canvas`
 
 const Pointer = styled.div`
   position: absolute;
-  z-index: 9999;
+  z-index: 10;
   cursor: none;
   border: 1px solid #000;
   border-radius: 100%;
@@ -111,11 +112,44 @@ const Pointer = styled.div`
   display: none;
 `
 
+const Players = styled.div`
+  position: fixed;
+  top: 1.5rem;
+  left: 2rem;
+  font-size: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem;
+
+  span {
+    display: block;
+    width: 7px;
+    height: 7px;
+    border-radius: 100%;
+    background: red;
+    position: relative;
+
+    &::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 14px;
+      height: 14px;
+      border-radius: 100%;
+      background: rgba(255, 0, 0, 0.3);
+    }
+  }
+`
+
 const BoardComponent = () => {
   const [selectedTool, setSelectedTool] = useState("BRUCH")
   const [selectedColor, setSelectedColor] = useState("#000")
   const [isPainting, setIsPainting] = useState(false)
   const [lineSize, setLineSize] = useState(8)
+  const [players, setPlayers] = useState(1)
   const [socket, setSocket] = useState()
   const [ctx, setCtx] = useState()
   const pointerRef = useRef()
@@ -137,12 +171,16 @@ const BoardComponent = () => {
     socket.emit("update", canvasRef.current.toDataURL("image/png"))
   }
 
-  const handleMouseEnter = () => {
-    pointerRef.current.style.display = "block"
-  }
+  const handleMouseMoveCursor = (e) => {
+    let { x } = canvasRef.current.getBoundingClientRect()
+    let { clientX } = e
 
-  const handleMouseLeave = () => {
-    pointerRef.current.style.display = "none"
+    if (clientX < x) {
+      pointerRef.current.style.display = "none"
+      handleMouseUp()
+    } else {
+      pointerRef.current.style.display = "block"
+    }
   }
 
   const handleMouseMove = (e) => {
@@ -204,16 +242,25 @@ const BoardComponent = () => {
     setSocket(socket)
 
     socket.on("canvas", (source) => handleUpdate(ctx, source))
+    socket.on("players", (players) => setPlayers(players))
   }, [])
 
   return (
-    <Container>
+    <Container onMouseMove={handleMouseMoveCursor}>
+      {players > 1 ? (
+        <Players>
+          <span></span>
+          {players}
+        </Players>
+      ) : (
+        <></>
+      )}
       <Panel selectedColor={selectedColor}>
         <Options>
-          <Button onClick={handlePlusSize} isActive={true}>
+          <Button onClick={handlePlusSize} isActive={false}>
             <Plus />
           </Button>
-          <Button onClick={handleMinusSize} isActive={true}>
+          <Button onClick={handleMinusSize} isActive={false}>
             <Minus />
           </Button>
           <Button
@@ -261,8 +308,6 @@ const BoardComponent = () => {
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseMove={handleMouseMove}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
         size={lineSize}
         ref={pointerRef}
       />
@@ -270,8 +315,6 @@ const BoardComponent = () => {
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseMove={handleMouseMove}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
         ref={canvasRef}
       />
     </Container>
