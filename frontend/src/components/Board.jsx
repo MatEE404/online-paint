@@ -178,7 +178,6 @@ const BoardComponent = () => {
     let image = new Image()
     image.src = source
     ctx.drawImage(image, 0, 0)
-    console.log(source)
   }
 
   useEffect(() => {
