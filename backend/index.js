@@ -13,20 +13,20 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const clients = []
-let canvas = null
+let changes = []
 
 io.on("connection", (client) => {
   clients.push(client)
 
-  if (canvas) client.emit("canvas", canvas)
+  client.emit("chnages", changes)
 
   io.emit("players", clients.length)
 
   console.log(`Client joined server: ${client.id}`)
 
-  client.on("update", (newCanvas) => {
-    canvas = newCanvas
-    client.broadcast.emit("canvas", canvas)
+  client.on("update", (change) => {
+    changes.push(change)
+    client.broadcast.emit("chnages", changes)
   })
 
   client.on("disconnect", () => {

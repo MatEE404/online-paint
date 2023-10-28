@@ -2,6 +2,7 @@ import styled from "styled-components"
 import { CirclePicker } from "react-color"
 import { useEffect, useRef, useState } from "react"
 import { io } from "socket.io-client"
+import { v4 as uuid } from "uuid"
 import {
   FaPaintBrush as PaintBrush,
   FaEraser as Rubber,
@@ -168,7 +169,7 @@ const BoardComponent = () => {
   const [startPositionBoard, setStartPositionBoard] = useState({ x: 0, y: 0 })
   const [selectedColor, setSelectedColor] = useState("#000")
   const [selectedTool, setSelectedTool] = useState("BRUCH")
-  const [isPainting, setIsPainting] = useState(false)
+  const [paintingID, setPaintingID] = useState(null)
   const [isMoving, setIsMoving] = useState(false)
   const [lineSize, setLineSize] = useState(8)
   const [players, setPlayers] = useState(1)
@@ -202,7 +203,7 @@ const BoardComponent = () => {
 
       setStartPositionBoard({ x, y })
     } else {
-      setIsPainting(true)
+      setPaintingID(uuid())
       handleMouseMove(e)
     }
   }
@@ -212,10 +213,8 @@ const BoardComponent = () => {
       setIsMoving(false)
       setStartPositionMouse({ x: 0, y: 0 })
     } else {
-      setIsPainting(false)
+      setPaintingID(null)
       ctx.beginPath()
-
-      socket.emit("update", canvasRef.current.toDataURL("image/png"))
     }
   }
 
@@ -237,21 +236,31 @@ const BoardComponent = () => {
     pointerRef.current.style.left = `${e.clientX - lineSize / 2}px`
     pointerRef.current.style.top = `${e.clientY - lineSize / 2}px`
 
-    if (isPainting) {
+    if (paintingID) {
       let { x, y } = canvasRef.current.getBoundingClientRect()
 
-      x = clientX - x
-      y = clientY - y
+      const change = {
+        id: paintingID,
+        x: clientX - x,
+        y: clientY - y,
+        color: selectedTool === "RUBBER" ? "#fff" : selectedColor,
+        size: lineSize,
+      }
 
-      ctx.lineCap = "round"
-      ctx.lineWidth = lineSize
-      ctx.fillStyle = selectedTool === "RUBBER" ? "#fff" : selectedColor
-      ctx.strokeStyle = selectedTool === "RUBBER" ? "#fff" : selectedColor
+      handleUpdate(ctx, change)
+      socket.emit("update", change)
 
-      ctx.lineTo(x, y)
-      ctx.stroke()
-      ctx.beginPath()
-      ctx.moveTo(x, y)
+      // ctx.lineCap = "round"
+      // ctx.lineWidth = lineSize
+      // ctx.fillStyle = selectedTool === "RUBBER" ? "#fff" : selectedColor
+      // ctx.strokeStyle = selectedTool === "RUBBER" ? "#fff" : selectedColor
+
+      // socket.emit("update", canvasRef.current.toDataURL("image/png"))
+
+      // ctx.lineTo(x, y)
+      // ctx.stroke()
+      // ctx.beginPath()
+      // ctx.moveTo(x, y)
     } else if (isMoving) {
       let deltaX = startPositionMouse.x - clientX
       let deltaY = startPositionMouse.y - clientY
@@ -271,17 +280,37 @@ const BoardComponent = () => {
     setLineSize(MIN_LINE_SIZE < lineSize ? lineSize - 4 : lineSize)
   }
 
-  const handleUpdate = (ctx, source) => {
-    let image = new Image()
-    image.src = source
-    image.onload = () =>
-      ctx.drawImage(
-        image,
-        0,
-        0,
-        canvasRef.current.width,
-        canvasRef.current.height
-      )
+  const handleUpdate = (ctx, { x, y, color, size }) => {
+    ctx.lineCap = "round"
+    ctx.lineWidth = size
+    ctx.fillStyle = color
+    ctx.strokeStyle = color
+
+    ctx.lineTo(x, y)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+  }
+
+  const handleChanges = (ctx, changes) => {
+    const _changes = {}
+
+    for (const index in changes) {
+      let change = changes[index]
+
+      if (_changes[change.id]) {
+        _changes[change.id].push(change)
+      } else {
+        _changes[change.id] = [change]
+      }
+    }
+
+    for (const key in _changes) {
+      for (const index in _changes[key]) {
+        handleUpdate(ctx, _changes[key][index])
+      }
+      ctx.beginPath()
+    }
   }
 
   useEffect(() => {
@@ -293,7 +322,7 @@ const BoardComponent = () => {
     })
     setSocket(socket)
 
-    socket.on("canvas", (source) => handleUpdate(ctx, source))
+    socket.on("chnages", (changes) => handleChanges(ctx, changes))
     socket.on("players", (players) => setPlayers(players))
   }, [])
 
