@@ -19,6 +19,7 @@ const Container = styled.main`
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 `
 
 const Panel = styled.section`
@@ -177,7 +178,14 @@ const BoardComponent = () => {
   const handleUpdate = (ctx, source) => {
     let image = new Image()
     image.src = source
-    ctx.drawImage(image, 0, 0)
+    image.onload = () =>
+      ctx.drawImage(
+        image,
+        0,
+        0,
+        canvasRef.current.width,
+        canvasRef.current.height
+      )
   }
 
   useEffect(() => {
