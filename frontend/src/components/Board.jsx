@@ -2,7 +2,6 @@ import styled from "styled-components"
 import { CirclePicker } from "react-color"
 import { useEffect, useRef, useState } from "react"
 import { io } from "socket.io-client"
-
 import {
   FaPaintBrush as PaintBrush,
   FaEraser as Rubber,
@@ -10,8 +9,14 @@ import {
   FaMinus as Minus,
 } from "react-icons/fa"
 
-const MIN_LINE_SIZE = 4
-const MAX_LINE_SIZE = 64
+import {
+  TRANSLATE_REGEX,
+  MIN_LINE_SIZE,
+  MAX_LINE_SIZE,
+  LINE_COLORS,
+  BOARD_HEIGHT,
+  BOARD_WIDTH,
+} from "../constants"
 
 const Container = styled.main`
   width: 100vw;
@@ -95,14 +100,27 @@ const ColorPicker = styled.div`
   }
 `
 
-const Canvas = styled.canvas`
+const Board = styled.section`
   width: calc(100% - 100px);
+  background: #ccc;
   height: 100vh;
+  position: relative;
+`
+
+const Canvas = styled.canvas`
+  background: #fff;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(
+    ${({ width }) => `${width / -2}px`},
+    ${({ height }) => `${height / -2}px`}
+  );
   cursor: none;
 `
 
 const Pointer = styled.div`
-  position: absolute;
+  position: fixed;
   z-index: 10;
   cursor: none;
   border: 1px solid #000;
@@ -146,9 +164,12 @@ const Players = styled.div`
 `
 
 const BoardComponent = () => {
-  const [selectedTool, setSelectedTool] = useState("BRUCH")
+  const [startPositionMouse, setStartPositionMouse] = useState({ x: 0, y: 0 })
+  const [startPositionBoard, setStartPositionBoard] = useState({ x: 0, y: 0 })
   const [selectedColor, setSelectedColor] = useState("#000")
+  const [selectedTool, setSelectedTool] = useState("BRUCH")
   const [isPainting, setIsPainting] = useState(false)
+  const [isMoving, setIsMoving] = useState(false)
   const [lineSize, setLineSize] = useState(8)
   const [players, setPlayers] = useState(1)
   const [socket, setSocket] = useState()
@@ -156,27 +177,53 @@ const BoardComponent = () => {
   const pointerRef = useRef()
   const canvasRef = useRef()
 
+  const handleContextMenu = (e) => {
+    e.preventDefault()
+  }
+
   const handleChangeColor = (color) => {
     setSelectedColor(color.hex)
   }
 
   const handleMouseDown = (e) => {
-    setIsPainting(true)
-    handleMouseMove(e)
+    if (e?.button === 2) {
+      setIsMoving(true)
+      setStartPositionMouse({ x: e.clientX, y: e.clientY })
+
+      let x = BOARD_WIDTH / -2
+      let y = BOARD_HEIGHT / -2
+
+      let match = canvasRef.current.style.transform.match(TRANSLATE_REGEX)
+
+      if (match) {
+        x = parseInt(match[1])
+        y = parseInt(match[2])
+      }
+
+      setStartPositionBoard({ x, y })
+    } else {
+      setIsPainting(true)
+      handleMouseMove(e)
+    }
   }
 
-  const handleMouseUp = () => {
-    setIsPainting(false)
-    ctx.beginPath()
+  const handleMouseUp = (e) => {
+    if (e?.button === 2) {
+      setIsMoving(false)
+      setStartPositionMouse({ x: 0, y: 0 })
+    } else {
+      setIsPainting(false)
+      ctx.beginPath()
 
-    socket.emit("update", canvasRef.current.toDataURL("image/png"))
+      socket.emit("update", canvasRef.current.toDataURL("image/png"))
+    }
   }
 
   const handleMouseMoveCursor = (e) => {
-    let { x } = canvasRef.current.getBoundingClientRect()
-    let { clientX } = e
+    let { x, y } = canvasRef.current.getBoundingClientRect()
+    let { clientX, clientY } = e
 
-    if (clientX < x) {
+    if (clientX < x || clientY < y) {
       pointerRef.current.style.display = "none"
       handleMouseUp()
     } else {
@@ -185,25 +232,35 @@ const BoardComponent = () => {
   }
 
   const handleMouseMove = (e) => {
-    let { x, y } = canvasRef.current.getBoundingClientRect()
+    let { clientX, clientY } = e
 
     pointerRef.current.style.left = `${e.clientX - lineSize / 2}px`
     pointerRef.current.style.top = `${e.clientY - lineSize / 2}px`
 
-    if (!isPainting) return
+    if (isPainting) {
+      let { x, y } = canvasRef.current.getBoundingClientRect()
 
-    x = e.clientX - x
-    y = e.clientY - y
+      x = clientX - x
+      y = clientY - y
 
-    ctx.lineCap = "round"
-    ctx.lineWidth = lineSize
-    ctx.fillStyle = selectedTool === "RUBBER" ? "#fff" : selectedColor
-    ctx.strokeStyle = selectedTool === "RUBBER" ? "#fff" : selectedColor
+      ctx.lineCap = "round"
+      ctx.lineWidth = lineSize
+      ctx.fillStyle = selectedTool === "RUBBER" ? "#fff" : selectedColor
+      ctx.strokeStyle = selectedTool === "RUBBER" ? "#fff" : selectedColor
 
-    ctx.lineTo(x, y)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.moveTo(x, y)
+      ctx.lineTo(x, y)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+    } else if (isMoving) {
+      let deltaX = startPositionMouse.x - clientX
+      let deltaY = startPositionMouse.y - clientY
+
+      let translate = `${startPositionBoard.x - deltaX}px, 
+        ${startPositionBoard.y - deltaY}px`
+
+      canvasRef.current.style.transform = `translate(${translate})`
+    }
   }
 
   const handlePlusSize = () => {
@@ -228,12 +285,6 @@ const BoardComponent = () => {
   }
 
   useEffect(() => {
-    const canvas = canvasRef.current
-
-    let { width, height } = canvasRef.current.getBoundingClientRect()
-    canvas.height = height
-    canvas.width = width
-
     const ctx = canvasRef.current.getContext("2d")
     setCtx(ctx)
 
@@ -280,44 +331,27 @@ const BoardComponent = () => {
             color={selectedColor}
             onChange={handleChangeColor}
             circleSpacing={10}
-            colors={[
-              "#f44336",
-              "#e91e63",
-              "#9c27b0",
-              "#673ab7",
-              "#3f51b5",
-              "#2196f3",
-              "#03a9f4",
-              "#00bcd4",
-              "#009688",
-              "#4caf50",
-              "#8bc34a",
-              "#cddc39",
-              "#ffeb3b",
-              "#ffc107",
-              "#ff9800",
-              "#ff5722",
-              "#795548",
-              "#607d8b",
-              "#43495c",
-              "#18191b",
-            ]}
+            colors={LINE_COLORS}
           />
         </ColorPicker>
       </Panel>
-      <Pointer
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseMove={handleMouseMove}
-        size={lineSize}
-        ref={pointerRef}
-      />
-      <Canvas
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseMove={handleMouseMove}
-        ref={canvasRef}
-      />
+      <Board onContextMenu={handleContextMenu}>
+        <Pointer
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onMouseMove={handleMouseMove}
+          size={lineSize}
+          ref={pointerRef}
+        />
+        <Canvas
+          width={BOARD_WIDTH}
+          height={BOARD_HEIGHT}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onMouseMove={handleMouseMove}
+          ref={canvasRef}
+        />
+      </Board>
     </Container>
   )
 }
