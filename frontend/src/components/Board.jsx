@@ -133,6 +133,8 @@ const BoardComponent = () => {
   const handleMouseUp = () => {
     setIsPainting(false)
     ctx.beginPath()
+
+    socket.emit("update", canvasRef.current.toDataURL("image/png"))
   }
 
   const handleMouseEnter = () => {
@@ -163,8 +165,6 @@ const BoardComponent = () => {
     ctx.stroke()
     ctx.beginPath()
     ctx.moveTo(x, y)
-
-    socket.emit("update", canvasRef.current.toDataURL("image/png"))
   }
 
   const handlePlusSize = () => {
