@@ -75,7 +75,6 @@ const BoardComponent = () => {
       clientY > height + y
     ) {
       pointerRef.current.style.display = "none"
-      handleMouseUp()
     } else {
       pointerRef.current.style.display = "block"
     }
@@ -174,7 +173,11 @@ const BoardComponent = () => {
         setSelectedColor={setSelectedColor}
         setLineSize={setLineSize}
       />
-      <Board onContextMenu={handleContextMenu}>
+      <Board
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseMove={handleMouseMove}
+        onContextMenu={handleContextMenu}>
         <Pointer
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
@@ -182,14 +185,7 @@ const BoardComponent = () => {
           size={lineSize}
           ref={pointerRef}
         />
-        <Canvas
-          width={BOARD_WIDTH}
-          height={BOARD_HEIGHT}
-          onMouseDown={handleMouseDown}
-          onMouseUp={handleMouseUp}
-          onMouseMove={handleMouseMove}
-          ref={canvasRef}
-        />
+        <Canvas width={BOARD_WIDTH} height={BOARD_HEIGHT} ref={canvasRef} />
       </Board>
     </Container>
   )
