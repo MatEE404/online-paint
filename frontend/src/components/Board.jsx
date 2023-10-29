@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react"
 import { io } from "socket.io-client"
-import { v4 as uuid } from "uuid"
 
 import {
   TRANSLATE_REGEX,
@@ -9,7 +8,7 @@ import {
   LINE_COLORS,
 } from "../constants"
 import { Container, Board, Pointer, Canvas } from "./Board.styled"
-import { handleContextMenu } from "../utils"
+import { handleContextMenu, getPosition, handleUpdate } from "../utils"
 import Loading from "./Loading"
 import Players from "./Players"
 import Panel from "./Panel"
@@ -17,14 +16,14 @@ import Panel from "./Panel"
 const BoardComponent = () => {
   const [startPositionMouse, setStartPositionMouse] = useState({ x: 0, y: 0 })
   const [startPositionBoard, setStartPositionBoard] = useState({ x: 0, y: 0 })
+  const [currentPosition, setCurrentPosition] = useState({ x: 0, y: 0 })
   const [selectedColor, setSelectedColor] = useState(LINE_COLORS.at(-1))
   const [selectedTool, setSelectedTool] = useState("BRUCH")
-  const [paintingID, setPaintingID] = useState(null)
+  const [isPainting, setIsPainting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isMoving, setIsMoving] = useState(false)
   const [lineSize, setLineSize] = useState(16)
   const [players, setPlayers] = useState(1)
-  const [changes, setChanges] = useState([])
   const [socket, setSocket] = useState()
   const [ctx, setCtx] = useState()
   const pointerRef = useRef()
@@ -47,8 +46,8 @@ const BoardComponent = () => {
 
       setStartPositionBoard({ x, y })
     } else {
-      setPaintingID(uuid())
-      handleMouseMove(e)
+      setIsPainting(true)
+      setCurrentPosition(getPosition(e))
     }
   }
 
@@ -57,22 +56,23 @@ const BoardComponent = () => {
       setIsMoving(false)
       setStartPositionMouse({ x: 0, y: 0 })
     } else {
-      socket.emit("update", changes)
-      ctx.beginPath()
-      setChanges([])
-      setPaintingID(null)
+      handleMouseMove(e)
+      setIsPainting(false)
     }
   }
 
-  const handleMouseMoveCursor = (e) => {
+  const updatePointer = (e) => {
     let { x, y, width, height } = canvasRef.current.getBoundingClientRect()
-    let { clientX, clientY } = e
+    let client = getPosition(e)
+
+    pointerRef.current.style.left = `${client.x - lineSize / 2}px`
+    pointerRef.current.style.top = `${client.y - lineSize / 2}px`
 
     if (
-      clientX < x ||
-      clientY < y ||
-      clientX > width + x ||
-      clientY > height + y
+      client.x < x ||
+      client.y < y ||
+      client.x > width + x ||
+      client.y > height + y
     ) {
       pointerRef.current.style.display = "none"
     } else {
@@ -81,27 +81,27 @@ const BoardComponent = () => {
   }
 
   const handleMouseMove = (e) => {
-    let { clientX, clientY } = e
+    updatePointer(e)
 
-    pointerRef.current.style.left = `${e.clientX - lineSize / 2}px`
-    pointerRef.current.style.top = `${e.clientY - lineSize / 2}px`
-
-    if (paintingID) {
+    if (isPainting) {
       let { x, y } = canvasRef.current.getBoundingClientRect()
 
       const change = {
-        id: paintingID,
-        x: clientX - x,
-        y: clientY - y,
-        color: selectedTool === "RUBBER" ? "#fff" : selectedColor,
         size: lineSize,
+        x0: currentPosition.x - x,
+        y0: currentPosition.y - y,
+        x1: getPosition(e).x - x,
+        y1: getPosition(e).y - y,
+        color: selectedTool === "RUBBER" ? "#fff" : selectedColor,
       }
 
+      setCurrentPosition(getPosition(e))
+
+      socket.emit("update", change)
       handleUpdate(ctx, change)
-      setChanges([...changes, change])
     } else if (isMoving) {
-      let deltaX = startPositionMouse.x - clientX
-      let deltaY = startPositionMouse.y - clientY
+      let deltaX = startPositionMouse.x - getPosition(e).x
+      let deltaY = startPositionMouse.y - getPosition(e).y
 
       let translate = `${startPositionBoard.x - deltaX}px, 
         ${startPositionBoard.y - deltaY}px`
@@ -110,59 +110,30 @@ const BoardComponent = () => {
     }
   }
 
-  const handleUpdate = (ctx, { x, y, color, size }) => {
-    ctx.lineCap = "round"
-    ctx.lineWidth = size
-    ctx.fillStyle = color
-    ctx.strokeStyle = color
-
-    ctx.lineTo(x, y)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.moveTo(x, y)
-  }
-
-  const handleChanges = (ctx, changes) => {
-    if (paintingID) return
-
-    const _changes = {}
-    for (const index in changes) {
-      let change = changes[index]
-
-      if (_changes[change.id]) {
-        _changes[change.id].push(change)
-      } else {
-        _changes[change.id] = [change]
-      }
-    }
-
-    for (const key in _changes) {
-      for (const index in _changes[key]) {
-        handleUpdate(ctx, _changes[key][index])
-      }
-      ctx.beginPath()
-    }
-
-    setIsLoading(false)
-  }
-
   useEffect(() => {
-    setIsLoading(true)
-
     const ctx = canvasRef.current.getContext("2d")
     setCtx(ctx)
 
-    const socket = io(process.env.REACT_APP_SERVER_URL, {
-      transports: ["websocket"],
-    })
+    const options = { transports: ["websocket"] }
+    const socket = io(process.env.REACT_APP_SERVER_URL, options)
     setSocket(socket)
 
-    socket.on("chnages", (changes) => handleChanges(ctx, changes))
     socket.on("players", (players) => setPlayers(players))
+    socket.on("chnage", (data) => {
+      if (data.length !== undefined) {
+        for (const index in data) {
+          handleUpdate(ctx, data[index])
+        }
+      } else {
+        handleUpdate(ctx, data)
+      }
+
+      setIsLoading(false)
+    })
   }, [])
 
   return (
-    <Container onMouseMove={handleMouseMoveCursor}>
+    <Container onMouseMove={handleMouseMove}>
       <Loading isLoading={isLoading} />
       <Players players={players} />
       <Panel
@@ -176,12 +147,10 @@ const BoardComponent = () => {
       <Board
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
-        onMouseMove={handleMouseMove}
         onContextMenu={handleContextMenu}>
         <Pointer
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
-          onMouseMove={handleMouseMove}
           size={lineSize}
           ref={pointerRef}
         />

@@ -18,15 +18,15 @@ let changes = []
 io.on("connection", (client) => {
   clients.push(client)
 
-  client.emit("chnages", changes)
+  client.emit("chnage", changes)
 
   io.emit("players", clients.length)
 
   console.log(`Client joined server: ${client.id}`)
 
-  client.on("update", (newChanges) => {
-    changes = [...changes, ...newChanges]
-    client.broadcast.emit("chnages", newChanges)
+  client.on("update", (newChange) => {
+    changes.push(newChange)
+    client.broadcast.emit("chnage", newChange)
   })
 
   client.on("disconnect", () => {

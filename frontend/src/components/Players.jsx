@@ -1,5 +1,7 @@
 import styled from "styled-components"
 
+import { handleContextMenu } from "../utils"
+
 export const Players = styled.div`
   position: fixed;
   top: 1rem;
@@ -37,7 +39,7 @@ const Dot = styled.div`
 const PlayersComponent = ({ players }) => {
   if (players > 1) {
     return (
-      <Players>
+      <Players onContextMenu={handleContextMenu}>
         <Dot />
         {players}
       </Players>

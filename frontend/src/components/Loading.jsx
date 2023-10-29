@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react"
 import styled from "styled-components"
 
+import { handleContextMenu } from "../utils"
+
 const LoadingScreen = styled.div`
   width: 100vw;
   height: 100vh;
@@ -49,7 +51,10 @@ const LoadingComponent = ({ isLoading }) => {
   }, [isLoading])
 
   return (
-    <LoadingScreen ref={loadingRef} isLoading={isLoading}>
+    <LoadingScreen
+      ref={loadingRef}
+      isLoading={isLoading}
+      onContextMenu={handleContextMenu}>
       <Title>Loading</Title>
     </LoadingScreen>
   )
