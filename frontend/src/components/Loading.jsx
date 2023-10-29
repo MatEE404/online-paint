@@ -41,9 +41,11 @@ const LoadingComponent = ({ isLoading }) => {
   const loadingRef = useRef()
 
   useEffect(() => {
-    setTimeout(() => {
-      loadingRef.current.style.display = "none"
-    }, 650)
+    if (!isLoading) {
+      setTimeout(() => {
+        loadingRef.current.style.display = "none"
+      }, 650)
+    }
   }, [isLoading])
 
   return (
