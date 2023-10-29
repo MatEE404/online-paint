@@ -10,6 +10,7 @@ import {
 } from "../constants"
 import { Container, Board, Pointer, Canvas } from "./Board.styled"
 import { handleContextMenu } from "../utils"
+import Loading from "./Loading"
 import Players from "./Players"
 import Panel from "./Panel"
 
@@ -19,6 +20,7 @@ const BoardComponent = () => {
   const [selectedColor, setSelectedColor] = useState(LINE_COLORS.at(-1))
   const [selectedTool, setSelectedTool] = useState("BRUCH")
   const [paintingID, setPaintingID] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
   const [isMoving, setIsMoving] = useState(false)
   const [lineSize, setLineSize] = useState(16)
   const [players, setPlayers] = useState(1)
@@ -141,9 +143,13 @@ const BoardComponent = () => {
       }
       ctx.beginPath()
     }
+
+    setIsLoading(false)
   }
 
   useEffect(() => {
+    setIsLoading(true)
+
     const ctx = canvasRef.current.getContext("2d")
     setCtx(ctx)
 
@@ -158,6 +164,7 @@ const BoardComponent = () => {
 
   return (
     <Container onMouseMove={handleMouseMoveCursor}>
+      <Loading isLoading={isLoading} />
       <Players players={players} />
       <Panel
         lineSize={lineSize}
