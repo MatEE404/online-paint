@@ -3,6 +3,10 @@ export const TRANSLATE_REGEX = /translate\(([\d.-]+)px, ([\d.-]+)px\)/
 export const MIN_LINE_SIZE = 4
 export const MAX_LINE_SIZE = 128
 
+export const ZOOM_MIN = 0.5
+export const ZOOM_MAX = 3
+export const ZOOM_SENSITIVITY = 0.0005
+
 export const BOARD_WIDTH = 1500
 export const BOARD_HEIGHT = 1000
 
@@ -28,3 +32,8 @@ export const LINE_COLORS = [
   "#43495c",
   "#18191b",
 ]
+
+export const TOOLS = {
+  Bruch: "BRUCH",
+  Rubber: "RUBBER",
+}

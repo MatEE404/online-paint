@@ -94,6 +94,7 @@ export const Canvas = styled.canvas`
   position: absolute;
   top: 50%;
   left: 50%;
+  zoom: ${({ zoom }) => zoom};
   transform: translate(
     ${({ width }) => `${width / -2}px`},
     ${({ height }) => `${height / -2}px`}

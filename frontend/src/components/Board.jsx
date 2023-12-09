@@ -6,6 +6,10 @@ import {
   BOARD_HEIGHT,
   BOARD_WIDTH,
   LINE_COLORS,
+  TOOLS,
+  ZOOM_MAX,
+  ZOOM_MIN,
+  ZOOM_SENSITIVITY,
 } from "../constants"
 import { Container, Board, Pointer, Canvas } from "./Board.styled"
 import { handleContextMenu, getPosition, handleUpdate } from "../utils"
@@ -18,13 +22,14 @@ const BoardComponent = () => {
   const [startPositionBoard, setStartPositionBoard] = useState({ x: 0, y: 0 })
   const [currentPosition, setCurrentPosition] = useState({ x: 0, y: 0 })
   const [selectedColor, setSelectedColor] = useState(LINE_COLORS.at(-1))
-  const [selectedTool, setSelectedTool] = useState("BRUCH")
+  const [selectedTool, setSelectedTool] = useState(TOOLS.Bruch)
   const [isPainting, setIsPainting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isMoving, setIsMoving] = useState(false)
   const [lineSize, setLineSize] = useState(16)
   const [players, setPlayers] = useState(1)
   const [socket, setSocket] = useState()
+  const [zoom, setZoom] = useState(1)
   const [ctx, setCtx] = useState()
   const pointerRef = useRef()
   const canvasRef = useRef()
@@ -110,6 +115,14 @@ const BoardComponent = () => {
     }
   }
 
+  const handleWheel = (e) => {
+    if (e.deltaY < 0) {
+      setZoom(zoom >= ZOOM_MAX ? ZOOM_MAX : zoom + ZOOM_SENSITIVITY)
+    } else if (e.deltaY > 0) {
+      setZoom(zoom <= ZOOM_MIN ? ZOOM_MIN : zoom - ZOOM_SENSITIVITY)
+    }
+  }
+
   useEffect(() => {
     const ctx = canvasRef.current.getContext("2d")
     setCtx(ctx)
@@ -133,7 +146,7 @@ const BoardComponent = () => {
   }, [])
 
   return (
-    <Container onMouseMove={handleMouseMove}>
+    <Container onWheel={handleWheel} onMouseMove={handleMouseMove}>
       <Loading isLoading={isLoading} />
       <Players players={players} />
       <Panel
@@ -154,7 +167,12 @@ const BoardComponent = () => {
           size={lineSize}
           ref={pointerRef}
         />
-        <Canvas width={BOARD_WIDTH} height={BOARD_HEIGHT} ref={canvasRef} />
+        <Canvas
+          zoom={zoom}
+          width={BOARD_WIDTH}
+          height={BOARD_HEIGHT}
+          ref={canvasRef}
+        />
       </Board>
     </Container>
   )
