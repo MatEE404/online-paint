@@ -7,10 +7,11 @@ import {
   BOARD_WIDTH,
   LINE_COLORS,
 } from "../constants"
-import { Container, Board, Pointer, Canvas } from "./Board.styled"
 import { handleContextMenu, getPosition, handleUpdate } from "../utils"
+import { Container, Board, Pointer, Canvas } from "./Board.styled"
 import Loading from "./Loading"
 import Players from "./Players"
+import Github from "./Github"
 import Panel from "./Panel"
 
 const BoardComponent = () => {
@@ -136,6 +137,7 @@ const BoardComponent = () => {
     <Container onMouseMove={handleMouseMove}>
       <Loading isLoading={isLoading} />
       <Players players={players} />
+      <Github />
       <Panel
         lineSize={lineSize}
         selectedColor={selectedColor}

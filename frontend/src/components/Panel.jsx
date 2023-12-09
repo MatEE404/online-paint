@@ -17,7 +17,10 @@ const PanelComponent = ({
       <ColorPicker>
         <CirclePicker
           color={selectedColor}
-          onChange={(color) => setSelectedColor(color.hex)}
+          onChange={(color) => {
+            setSelectedColor(color.hex)
+            setSelectedTool("BRUCH")
+          }}
           circleSpacing={6}
           colors={LINE_COLORS}
         />
